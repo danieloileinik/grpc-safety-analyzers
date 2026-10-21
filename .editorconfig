@@ -1,0 +1,23 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+indent_style = space
+indent_size = 4
+
+[*.{csproj,props,slnx,json}]
+indent_size = 2
+
+[*.cs]
+csharp_style_namespace_declarations = file_scoped:warning
+dotnet_style_require_accessibility_modifiers = for_non_interface_members:warning
+dotnet_diagnostic.GRPC001.severity = warning
+dotnet_diagnostic.GRPC002.severity = warning
+dotnet_diagnostic.GRPC003.severity = warning
+dotnet_diagnostic.GRPC004.severity = warning
+grpc_safety.strict = false
+
+# Release tracking starts when the first supported analyzer release is prepared.
+dotnet_diagnostic.RS2008.severity = none
