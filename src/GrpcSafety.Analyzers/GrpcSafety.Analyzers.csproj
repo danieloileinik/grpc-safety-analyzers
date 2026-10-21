@@ -6,6 +6,7 @@
     <Description>Conservative Roslyn diagnostics for gRPC deadlines, propagation, and retries.</Description>
     <Authors>Daniil Oleinic</Authors>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageTags>grpc;roslyn;analyzers;deadline;retry</PackageTags>
     <IncludeBuildOutput>false</IncludeBuildOutput>
     <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
@@ -16,6 +17,7 @@
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" PrivateAssets="all" />
     <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" PrivateAssets="all" />
     <InternalsVisibleTo Include="GrpcSafety.Analyzers.Tests" />
+    <None Include="../../README.md" Pack="true" PackagePath="/" />
     <None Include="$(OutputPath)$(AssemblyName).dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
   </ItemGroup>
 </Project>
