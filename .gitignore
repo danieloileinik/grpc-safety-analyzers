@@ -41,6 +41,7 @@ ScaffoldingReadMe.txt
 
 # Others
 .idea/
+*.DotSettings.user
 ~$*
 *~
 CodeCoverage/
