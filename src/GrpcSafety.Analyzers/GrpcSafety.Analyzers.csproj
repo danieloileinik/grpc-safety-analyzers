@@ -2,8 +2,8 @@
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
     <IsPackable>true</IsPackable>
-    <Version>0.1.0-alpha.1</Version>
-    <Description>Roslyn diagnostics for gRPC deadlines, deadline propagation, retries, hedging, and declared idempotency. Preview: only GRPC001 currently emits diagnostics.</Description>
+    <Version>0.1.0-alpha.4</Version>
+    <Description>Roslyn diagnostics for gRPC deadlines, deadline propagation, retries, hedging, and declared idempotency. Preview: GRPC001 through GRPC004 emit diagnostics.</Description>
     <Authors>Daniil Oleinic</Authors>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
