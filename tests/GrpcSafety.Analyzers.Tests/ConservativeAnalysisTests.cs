@@ -18,7 +18,7 @@ public sealed class ConservativeAnalysisTests
         "new Greeter.GreeterClient(GrpcChannel.ForAddress(\"https://localhost\", options)).SayHello(new HelloRequest());",
         "GrpcChannelOptions options")]
     [InlineData(
-        "new Greeter.GreeterClient(GrpcChannel.ForAddress(\"https://localhost\", new GrpcChannelOptions { MaxRetryAttempts = 1 })).SayHello(new HelloRequest());",
+        "new Greeter.GreeterClient(GrpcChannel.ForAddress(\"https://localhost\", new GrpcChannelOptions { MaxRetryAttempts = DateTime.UtcNow.Day })).SayHello(new HelloRequest());",
         "")]
     [InlineData(
         "invoker.BlockingUnaryCall(method, null, new CallOptions(), new HelloRequest());",
@@ -29,7 +29,7 @@ public sealed class ConservativeAnalysisTests
         var test = new GrpcAnalyzerTest { TestCode = GrpcTestSource.Wrap(body, parameters) };
 
         // Act
-        Task verification = test.RunAsync();
+        var verification = test.RunAsync();
 
         // Assert
         await verification;
@@ -47,17 +47,17 @@ public sealed class ConservativeAnalysisTests
         };
         test.TestState.Sources.Add(
             ("CustomInvoker.cs", """
-                                  using Grpc.Core;
+                                 using Grpc.Core;
 
-                                  public abstract class CustomInvoker : CallInvoker
-                                  {
-                                      public string BlockingUnaryCall(CallOptions options) => "cache lookup";
-                                  }
-                                  """));
+                                 public abstract class CustomInvoker : CallInvoker
+                                 {
+                                     public string BlockingUnaryCall(CallOptions options) => "cache lookup";
+                                 }
+                                 """));
         test.Configure("grpc_safety.strict = true");
 
         // Act
-        Task verification = test.RunAsync();
+        var verification = test.RunAsync();
 
         // Assert
         await verification;
@@ -84,7 +84,7 @@ public sealed class ConservativeAnalysisTests
                                  """));
 
         // Act
-        Task verification = test.RunAsync();
+        var verification = test.RunAsync();
 
         // Assert
         await verification;
@@ -98,7 +98,7 @@ public sealed class ConservativeAnalysisTests
         test.TestState.AdditionalReferences.Clear();
 
         // Act
-        Task verification = test.RunAsync();
+        var verification = test.RunAsync();
 
         // Assert
         await verification;
@@ -122,7 +122,7 @@ public sealed class ConservativeAnalysisTests
                                 """));
 
         // Act
-        Task verification = test.RunAsync();
+        var verification = test.RunAsync();
 
         // Assert
         await verification;

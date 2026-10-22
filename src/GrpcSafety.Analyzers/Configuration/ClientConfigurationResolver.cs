@@ -1,5 +1,6 @@
 using System.Linq;
 using System.Threading;
+using GrpcSafety.Analyzers.Analysis;
 using GrpcSafety.Analyzers.Semantics;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Operations;
@@ -8,31 +9,48 @@ namespace GrpcSafety.Analyzers.Configuration;
 
 internal sealed class ClientConfigurationResolver(GrpcSymbols symbols) : IClientConfigurationResolver
 {
+    private readonly InjectedClientResolver _injectedClients = new(symbols);
+    private readonly LocalValueResolver _locals = new(symbols.Compilation);
+    private readonly ClientRegistrationIndex _registrations = new(symbols);
+
     public ClientConfiguration Resolve(GrpcCall call, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        IOperation? instance = UnwrapReceiver(call.Invocation.Instance);
+        var instance = ResolveReceiver(call.Invocation.Instance, cancellationToken);
 
-        // Local/field/DI provenance needs flow analysis and remains unresolved in the scaffold.
         if (instance is ILocalReferenceOperation or IFieldReferenceOperation or IParameterReferenceOperation)
-            return ClientConfiguration.Unresolved;
+        {
+            var client = _injectedClients.FindClient(instance, cancellationToken);
+            if (client is not null
+                && SymbolEqualityComparer.Default.Equals(client, call.Invocation.TargetMethod.ContainingType))
+                return _registrations.Resolve(client, cancellationToken);
 
-        if (call.IsCallInvoker) return ResolveInvoker(instance);
+            return ClientConfiguration.Unresolved;
+        }
+
+        if (call.IsCallInvoker) return ResolveInvoker(instance, cancellationToken);
 
         if (instance is not IObjectCreationOperation { Initializer: null, Constructor: { } constructor } creation
             || !SymbolEqualityComparer.Default.Equals(creation.Type, call.Invocation.TargetMethod.ContainingType)
             || !symbols.HasGeneratorAttribute(constructor))
             return ClientConfiguration.Opaque;
 
-        IArgumentOperation? channel = creation.Arguments.FirstOrDefault(argument =>
+        var channel = creation.Arguments.FirstOrDefault(argument =>
             argument.Parameter?.Name is "channel");
-        if (channel is not null) return ResolveChannel(UnwrapReceiver(channel.Value));
+        if (channel is not null)
+            return ResolveChannel(ResolveReceiver(channel.Value, cancellationToken), cancellationToken);
 
-        IArgumentOperation? invoker = creation.Arguments.FirstOrDefault(argument =>
+        var invoker = creation.Arguments.FirstOrDefault(argument =>
             argument.Parameter?.Name is "callInvoker");
         return invoker is null
             ? ClientConfiguration.Opaque
-            : ResolveInvoker(UnwrapReceiver(invoker.Value));
+            : ResolveInvoker(ResolveReceiver(invoker.Value, cancellationToken), cancellationToken);
+    }
+
+    private IOperation? ResolveReceiver(IOperation? operation, CancellationToken cancellationToken)
+    {
+        operation = UnwrapReceiver(operation);
+        return operation is null ? null : _locals.Resolve(operation, cancellationToken);
     }
 
     private static IOperation? UnwrapReceiver(IOperation? operation)
@@ -40,7 +58,7 @@ internal sealed class ClientConfigurationResolver(GrpcSymbols symbols) : IClient
         operation = DeadlineResolver.Unwrap(operation);
         while (operation is IConditionalAccessInstanceOperation)
         {
-            IOperation? parent = operation.Parent;
+            var parent = operation.Parent;
             while (parent is not null and not IConditionalAccessOperation) parent = parent.Parent;
 
             operation = parent is IConditionalAccessOperation conditionalAccess
@@ -51,36 +69,31 @@ internal sealed class ClientConfigurationResolver(GrpcSymbols symbols) : IClient
         return operation;
     }
 
-    private ClientConfiguration ResolveInvoker(IOperation? operation)
+    private ClientConfiguration ResolveInvoker(IOperation? operation, CancellationToken cancellationToken)
     {
         return operation is IInvocationOperation { TargetMethod.Name: "CreateCallInvoker" } invocation
                && GrpcSymbols.Is(invocation.TargetMethod.ContainingType, symbols.Channel)
-            ? ResolveChannel(UnwrapReceiver(invocation.Instance))
+            ? ResolveChannel(ResolveReceiver(invocation.Instance, cancellationToken), cancellationToken)
             : ClientConfiguration.Opaque;
     }
 
-    private ClientConfiguration ResolveChannel(IOperation? operation)
+    private ClientConfiguration ResolveChannel(IOperation? operation, CancellationToken cancellationToken)
     {
         if (operation is not IInvocationOperation { TargetMethod: { Name: "ForAddress", IsStatic: true } } invocation
             || !GrpcSymbols.Is(invocation.TargetMethod.ContainingType, symbols.Channel))
             return ClientConfiguration.Opaque;
 
-        IArgumentOperation? address = invocation.Arguments.FirstOrDefault(argument => argument.Parameter?.Name is "address");
+        var address = invocation.Arguments.FirstOrDefault(argument => argument.Parameter?.Name is "address");
         if (address?.Value.ConstantValue is not { HasValue: true, Value: string }) return ClientConfiguration.Opaque;
 
-        IArgumentOperation? options = invocation.Arguments.FirstOrDefault(argument => GrpcSymbols.Is(
+        var options = invocation.Arguments.FirstOrDefault(argument => GrpcSymbols.Is(
             argument.Parameter?.Type,
             symbols.ChannelOptions));
-        IOperation? value = DeadlineResolver.Unwrap(options?.Value);
+        var value = DeadlineResolver.Unwrap(options?.Value);
 
-        return value switch
-        {
-            null => ClientConfiguration.WithoutCentralDeadline,
-            { ConstantValue: { HasValue: true, Value: null } } => ClientConfiguration.WithoutCentralDeadline,
-            IObjectCreationOperation { Initializer: null or { Initializers.IsEmpty: true } } creation
-                when GrpcSymbols.Is(creation.Type, symbols.ChannelOptions) =>
-                ClientConfiguration.WithoutCentralDeadline,
-            _ => ClientConfiguration.Opaque
-        };
+        var reader = new ChannelConfigurationReader(symbols);
+        return value is null || reader.ReadOptions(value, cancellationToken)
+            ? new ClientConfiguration(true, ProtectionState.Unprotected, reader.Configuration)
+            : ClientConfiguration.Opaque;
     }
 }
