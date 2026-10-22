@@ -18,15 +18,22 @@ public sealed class CallSafetyClassifierTests
     [InlineData("Unknown", "Protected", true, false)]
     [InlineData("Unprotected", "Protected", true, false)]
     public void UnknownOrProtectedEvidenceDoesNotReport(
-        string explicitDeadline, string centralDeadline, bool registrationResolved, bool strict)
+        string explicitDeadline,
+        string centralDeadline,
+        bool registrationResolved,
+        bool strict)
     {
         // Arrange
         var deadline = Enum.Parse<ProtectionState>(explicitDeadline);
         var configuration = new ClientConfiguration(registrationResolved, Enum.Parse<ProtectionState>(centralDeadline));
 
         // Act
-        var classification = CallSafetyClassifier.Classify(
-            deadline, configuration, ProtectionState.Unknown, RetrySafety.Unknown, new(strict));
+        CallSafetyClassification classification = CallSafetyClassifier.Classify(
+            deadline,
+            configuration,
+            ProtectionState.Unknown,
+            RetrySafety.Unknown,
+            new GrpcSafetyOptions(strict));
 
         // Assert
         Assert.Null(classification.Diagnostic);
@@ -41,8 +48,12 @@ public sealed class CallSafetyClassifierTests
         var configuration = ClientConfiguration.WithoutCentralDeadline;
 
         // Act
-        var classification = CallSafetyClassifier.Classify(
-            ProtectionState.Unprotected, configuration, ProtectionState.Unknown, RetrySafety.Unknown, new(strict));
+        CallSafetyClassification classification = CallSafetyClassifier.Classify(
+            ProtectionState.Unprotected,
+            configuration,
+            ProtectionState.Unknown,
+            RetrySafety.Unknown,
+            new GrpcSafetyOptions(strict));
 
         // Assert
         Assert.Equal(ProtectionState.Unprotected, classification.Deadline);
@@ -57,7 +68,7 @@ public sealed class CallSafetyClassifierTests
         var retry = default(RetrySafety);
 
         // Act
-        var classification = CallSafetyClassifier.Classify(default, configuration, default, retry, default);
+        CallSafetyClassification classification = CallSafetyClassifier.Classify(default, configuration, default, retry, default);
 
         // Assert
         Assert.Equal(ProtectionState.Unknown, classification.Deadline);

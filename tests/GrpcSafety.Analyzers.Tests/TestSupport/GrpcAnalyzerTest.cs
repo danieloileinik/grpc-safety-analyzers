@@ -23,14 +23,18 @@ internal sealed class GrpcAnalyzerTest : CSharpAnalyzerTest<GrpcSafetyAnalyzer, 
             MetadataReference.CreateFromFile(typeof(ClientBase).Assembly.Location),
             MetadataReference.CreateFromFile(typeof(GrpcChannel).Assembly.Location),
             MetadataReference.CreateFromFile(typeof(IMessage).Assembly.Location),
-            MetadataReference.CreateFromFile(typeof(Greeter).Assembly.Location),
+            MetadataReference.CreateFromFile(typeof(Greeter).Assembly.Location)
         ]);
     }
 
-    public void Configure(string configuration) => TestState.AnalyzerConfigFiles.Add(("/.editorconfig", $$"""
-        root = true
+    public void Configure(string configuration)
+    {
+        TestState.AnalyzerConfigFiles.Add(
+            ("/.editorconfig", $$"""
+                                 root = true
 
-        [*.cs]
-        {{configuration}}
-        """));
+                                 [*.cs]
+                                 {{configuration}}
+                                 """));
+    }
 }

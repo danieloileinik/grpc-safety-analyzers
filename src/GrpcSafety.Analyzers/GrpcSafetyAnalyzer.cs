@@ -20,27 +20,23 @@ public sealed class GrpcSafetyAnalyzer : DiagnosticAnalyzer
         context.RegisterCompilationStartAction(start =>
         {
             var symbols = new GrpcSymbols(start.Compilation);
-            if (!symbols.IsAvailable)
-            {
-                return;
-            }
+            if (!symbols.IsAvailable) return;
 
             var recognizer = new GrpcCallRecognizer(symbols);
             var pipeline = new CallAnalysisPipeline(symbols, start.Options.AdditionalFiles);
-            start.RegisterOperationAction(operation =>
-            {
-                if (!recognizer.TryRecognize((IInvocationOperation)operation.Operation, out var call))
+            start.RegisterOperationAction(
+                operation =>
                 {
-                    return;
-                }
+                    if (!recognizer.TryRecognize((IInvocationOperation)operation.Operation, out GrpcCall call)) return;
 
-                var options = GrpcSafetyOptions.Read(operation.Options.AnalyzerConfigOptionsProvider, call.Invocation.Syntax.SyntaxTree);
-                var classification = pipeline.Analyze(call, options, operation.CancellationToken);
-                if (classification.Diagnostic is { } diagnostic)
-                {
-                    operation.ReportDiagnostic(Diagnostic.Create(diagnostic, call.Invocation.Syntax.GetLocation()));
-                }
-            }, OperationKind.Invocation);
+                    GrpcSafetyOptions options = GrpcSafetyOptions.Read(
+                        operation.Options.AnalyzerConfigOptionsProvider,
+                        call.Invocation.Syntax.SyntaxTree);
+                    CallSafetyClassification classification = pipeline.Analyze(call, options, operation.CancellationToken);
+                    if (classification.Diagnostic is { } diagnostic)
+                        operation.ReportDiagnostic(Diagnostic.Create(diagnostic, call.Invocation.Syntax.GetLocation()));
+                },
+                OperationKind.Invocation);
         });
     }
 }

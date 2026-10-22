@@ -4,5 +4,5 @@ internal enum ProtectionState
 {
     Unknown,
     Protected,
-    Unprotected,
+    Unprotected
 }

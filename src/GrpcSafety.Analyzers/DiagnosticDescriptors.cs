@@ -36,9 +36,11 @@ internal static class DiagnosticDescriptors
         MissingDeadline,
         MissingPropagation,
         UndeclaredIdempotency,
-        RetryWithoutDeadline,
+        RetryWithoutDeadline
     ];
 
-    private static DiagnosticDescriptor Create(string id, string title, string message, string description) =>
-        new(id, title, message, Category, DiagnosticSeverity.Warning, isEnabledByDefault: true, description: description);
+    private static DiagnosticDescriptor Create(string id, string title, string message, string description)
+    {
+        return new DiagnosticDescriptor(id, title, message, Category, DiagnosticSeverity.Warning, true, description);
+    }
 }

@@ -15,9 +15,12 @@ public sealed class DiagnosticPriorityTests
         var retry = new RetrySafety(ProtectionState.Unprotected, retries);
 
         // Act
-        var classification = CallSafetyClassifier.Classify(
-            ProtectionState.Unprotected, ClientConfiguration.WithoutCentralDeadline,
-            ProtectionState.Unprotected, retry, default);
+        CallSafetyClassification classification = CallSafetyClassifier.Classify(
+            ProtectionState.Unprotected,
+            ClientConfiguration.WithoutCentralDeadline,
+            ProtectionState.Unprotected,
+            retry,
+            default);
 
         // Assert
         Assert.Equal(DiagnosticIds.MissingPropagation, classification.Diagnostic?.Id);
@@ -27,12 +30,15 @@ public sealed class DiagnosticPriorityTests
     public void RetryWithoutDeadlineWinsOverMissingDeadline()
     {
         // Arrange
-        var retry = new RetrySafety(ProtectionState.Unknown, hasConfirmedMultipleAttempts: true);
+        var retry = new RetrySafety(ProtectionState.Unknown, true);
 
         // Act
-        var classification = CallSafetyClassifier.Classify(
-            ProtectionState.Unprotected, ClientConfiguration.WithoutCentralDeadline,
-            ProtectionState.Unknown, retry, default);
+        CallSafetyClassification classification = CallSafetyClassifier.Classify(
+            ProtectionState.Unprotected,
+            ClientConfiguration.WithoutCentralDeadline,
+            ProtectionState.Unknown,
+            retry,
+            default);
 
         // Assert
         Assert.Equal(DiagnosticIds.RetryWithoutDeadline, classification.Diagnostic?.Id);
@@ -42,12 +48,15 @@ public sealed class DiagnosticPriorityTests
     public void RetryViolationRequiresConfirmedMultipleAttempts()
     {
         // Arrange
-        var retry = new RetrySafety(ProtectionState.Unprotected, hasConfirmedMultipleAttempts: false);
+        var retry = new RetrySafety(ProtectionState.Unprotected, false);
 
         // Act
-        var classification = CallSafetyClassifier.Classify(
-            ProtectionState.Protected, ClientConfiguration.Unresolved,
-            ProtectionState.Unknown, retry, default);
+        CallSafetyClassification classification = CallSafetyClassifier.Classify(
+            ProtectionState.Protected,
+            ClientConfiguration.Unresolved,
+            ProtectionState.Unknown,
+            retry,
+            default);
 
         // Assert
         Assert.Null(classification.Diagnostic);
@@ -57,12 +66,15 @@ public sealed class DiagnosticPriorityTests
     public void UnknownDeadlineDoesNotProveRetryWithoutOverallDeadline()
     {
         // Arrange
-        var retry = new RetrySafety(ProtectionState.Unknown, hasConfirmedMultipleAttempts: true);
+        var retry = new RetrySafety(ProtectionState.Unknown, true);
 
         // Act
-        var classification = CallSafetyClassifier.Classify(
-            ProtectionState.Unknown, ClientConfiguration.WithoutCentralDeadline,
-            ProtectionState.Unknown, retry, default);
+        CallSafetyClassification classification = CallSafetyClassifier.Classify(
+            ProtectionState.Unknown,
+            ClientConfiguration.WithoutCentralDeadline,
+            ProtectionState.Unknown,
+            retry,
+            default);
 
         // Assert
         Assert.Null(classification.Diagnostic);
@@ -72,12 +84,15 @@ public sealed class DiagnosticPriorityTests
     public void ConfirmedRetryAndMissingIdempotencyCanBeClassified()
     {
         // Arrange
-        var retry = new RetrySafety(ProtectionState.Unprotected, hasConfirmedMultipleAttempts: true);
+        var retry = new RetrySafety(ProtectionState.Unprotected, true);
 
         // Act
-        var classification = CallSafetyClassifier.Classify(
-            ProtectionState.Protected, ClientConfiguration.Unresolved,
-            ProtectionState.Unknown, retry, default);
+        CallSafetyClassification classification = CallSafetyClassifier.Classify(
+            ProtectionState.Protected,
+            ClientConfiguration.Unresolved,
+            ProtectionState.Unknown,
+            retry,
+            default);
 
         // Assert
         Assert.Equal(DiagnosticIds.UndeclaredIdempotency, classification.Diagnostic?.Id);
@@ -90,8 +105,12 @@ public sealed class DiagnosticPriorityTests
         var configuration = ClientConfiguration.Unresolved;
 
         // Act
-        var classification = CallSafetyClassifier.Classify(
-            ProtectionState.Protected, configuration, ProtectionState.Unprotected, RetrySafety.Unknown, default);
+        CallSafetyClassification classification = CallSafetyClassifier.Classify(
+            ProtectionState.Protected,
+            configuration,
+            ProtectionState.Unprotected,
+            RetrySafety.Unknown,
+            default);
 
         // Assert
         Assert.Equal(ProtectionState.Protected, classification.Propagation);

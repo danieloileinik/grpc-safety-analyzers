@@ -10,7 +10,7 @@ internal readonly struct ClientConfiguration(bool isRegistrationResolved, Protec
 
     public static ClientConfiguration Unresolved => default;
 
-    public static ClientConfiguration Opaque => new(true, ProtectionState.Unknown);
+    public static ClientConfiguration Opaque => new ClientConfiguration(true, ProtectionState.Unknown);
 
-    public static ClientConfiguration WithoutCentralDeadline => new(true, ProtectionState.Unprotected);
+    public static ClientConfiguration WithoutCentralDeadline => new ClientConfiguration(true, ProtectionState.Unprotected);
 }
