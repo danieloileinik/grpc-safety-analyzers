@@ -24,15 +24,17 @@ public sealed class GrpcSafetyAnalyzer : DiagnosticAnalyzer
 
             var recognizer = new GrpcCallRecognizer(symbols);
             var pipeline = new CallAnalysisPipeline(symbols, start.Options.AdditionalFiles);
+            var retryConfigurations = new RetryConfigurationAnalyzer(symbols, start.Options.AdditionalFiles);
+            start.RegisterOperationAction(retryConfigurations.Analyze, OperationKind.Invocation);
             start.RegisterOperationAction(
                 operation =>
                 {
-                    if (!recognizer.TryRecognize((IInvocationOperation)operation.Operation, out GrpcCall call)) return;
+                    if (!recognizer.TryRecognize((IInvocationOperation)operation.Operation, out var call)) return;
 
-                    GrpcSafetyOptions options = GrpcSafetyOptions.Read(
+                    var options = GrpcSafetyOptions.Read(
                         operation.Options.AnalyzerConfigOptionsProvider,
                         call.Invocation.Syntax.SyntaxTree);
-                    CallSafetyClassification classification = pipeline.Analyze(call, options, operation.CancellationToken);
+                    var classification = pipeline.Analyze(call, options, operation.CancellationToken);
                     if (classification.Diagnostic is { } diagnostic)
                         operation.ReportDiagnostic(Diagnostic.Create(diagnostic, call.Invocation.Syntax.GetLocation()));
                 },

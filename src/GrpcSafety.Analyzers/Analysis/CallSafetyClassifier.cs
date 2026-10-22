@@ -21,7 +21,6 @@ internal static class CallSafetyClassifier
             (ProtectionState.Unprotected, _, _) => DiagnosticDescriptors.MissingDeadlinePropagation,
             (_, ProtectionState.Unprotected, true) => DiagnosticDescriptors.RetryWithoutDeadline,
             (_, ProtectionState.Unprotected, _) => DiagnosticDescriptors.MissingDeadline,
-            (_, _, true) when retry.State is ProtectionState.Unprotected => DiagnosticDescriptors.UndeclaredIdempotency,
             _ => null
         };
 

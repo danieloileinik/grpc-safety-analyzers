@@ -81,7 +81,7 @@ public sealed class DiagnosticPriorityTests
     }
 
     [Fact]
-    public void ConfirmedRetryAndMissingIdempotencyCanBeClassified()
+    public void IdempotencyIsReportedOnConfigurationRatherThanCall()
     {
         // Arrange
         var retry = new RetrySafety(ProtectionState.Unprotected, true);
@@ -95,7 +95,8 @@ public sealed class DiagnosticPriorityTests
             default);
 
         // Assert
-        Assert.Equal(DiagnosticIds.UndeclaredIdempotency, classification.Diagnostic?.Id);
+        Assert.Equal(ProtectionState.Unprotected, classification.Retry);
+        Assert.Null(classification.Diagnostic);
     }
 
     [Fact]
