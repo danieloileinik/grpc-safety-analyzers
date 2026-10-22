@@ -11,9 +11,9 @@ internal readonly struct GrpcSafetyOptions(bool strict)
 
     public static GrpcSafetyOptions Read(AnalyzerConfigOptionsProvider provider, SyntaxTree tree)
     {
-        bool found = provider.GetOptions(tree).TryGetValue(StrictKey, out string? value)
-                     || provider.GlobalOptions.TryGetValue(StrictKey, out value);
+        var found = provider.GetOptions(tree).TryGetValue(StrictKey, out var value)
+                    || provider.GlobalOptions.TryGetValue(StrictKey, out value);
 
-        return new GrpcSafetyOptions(found && bool.TryParse(value, out bool strict) && strict);
+        return new GrpcSafetyOptions(found && bool.TryParse(value, out var strict) && strict);
     }
 }

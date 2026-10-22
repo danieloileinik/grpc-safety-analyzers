@@ -28,7 +28,7 @@ public sealed class CallSafetyClassifierTests
         var configuration = new ClientConfiguration(registrationResolved, Enum.Parse<ProtectionState>(centralDeadline));
 
         // Act
-        CallSafetyClassification classification = CallSafetyClassifier.Classify(
+        var classification = CallSafetyClassifier.Classify(
             deadline,
             configuration,
             ProtectionState.Unknown,
@@ -48,7 +48,7 @@ public sealed class CallSafetyClassifierTests
         var configuration = ClientConfiguration.WithoutCentralDeadline;
 
         // Act
-        CallSafetyClassification classification = CallSafetyClassifier.Classify(
+        var classification = CallSafetyClassifier.Classify(
             ProtectionState.Unprotected,
             configuration,
             ProtectionState.Unknown,
@@ -68,7 +68,7 @@ public sealed class CallSafetyClassifierTests
         var retry = default(RetrySafety);
 
         // Act
-        CallSafetyClassification classification = CallSafetyClassifier.Classify(default, configuration, default, retry, default);
+        var classification = CallSafetyClassifier.Classify(default, configuration, default, retry, default);
 
         // Assert
         Assert.Equal(ProtectionState.Unknown, classification.Deadline);

@@ -15,7 +15,7 @@ public sealed class DiagnosticPriorityTests
         var retry = new RetrySafety(ProtectionState.Unprotected, retries);
 
         // Act
-        CallSafetyClassification classification = CallSafetyClassifier.Classify(
+        var classification = CallSafetyClassifier.Classify(
             ProtectionState.Unprotected,
             ClientConfiguration.WithoutCentralDeadline,
             ProtectionState.Unprotected,
@@ -33,7 +33,7 @@ public sealed class DiagnosticPriorityTests
         var retry = new RetrySafety(ProtectionState.Unknown, true);
 
         // Act
-        CallSafetyClassification classification = CallSafetyClassifier.Classify(
+        var classification = CallSafetyClassifier.Classify(
             ProtectionState.Unprotected,
             ClientConfiguration.WithoutCentralDeadline,
             ProtectionState.Unknown,
@@ -51,7 +51,7 @@ public sealed class DiagnosticPriorityTests
         var retry = new RetrySafety(ProtectionState.Unprotected, false);
 
         // Act
-        CallSafetyClassification classification = CallSafetyClassifier.Classify(
+        var classification = CallSafetyClassifier.Classify(
             ProtectionState.Protected,
             ClientConfiguration.Unresolved,
             ProtectionState.Unknown,
@@ -69,7 +69,7 @@ public sealed class DiagnosticPriorityTests
         var retry = new RetrySafety(ProtectionState.Unknown, true);
 
         // Act
-        CallSafetyClassification classification = CallSafetyClassifier.Classify(
+        var classification = CallSafetyClassifier.Classify(
             ProtectionState.Unknown,
             ClientConfiguration.WithoutCentralDeadline,
             ProtectionState.Unknown,
@@ -87,7 +87,7 @@ public sealed class DiagnosticPriorityTests
         var retry = new RetrySafety(ProtectionState.Unprotected, true);
 
         // Act
-        CallSafetyClassification classification = CallSafetyClassifier.Classify(
+        var classification = CallSafetyClassifier.Classify(
             ProtectionState.Protected,
             ClientConfiguration.Unresolved,
             ProtectionState.Unknown,
@@ -105,7 +105,7 @@ public sealed class DiagnosticPriorityTests
         var configuration = ClientConfiguration.Unresolved;
 
         // Act
-        CallSafetyClassification classification = CallSafetyClassifier.Classify(
+        var classification = CallSafetyClassifier.Classify(
             ProtectionState.Protected,
             configuration,
             ProtectionState.Unprotected,

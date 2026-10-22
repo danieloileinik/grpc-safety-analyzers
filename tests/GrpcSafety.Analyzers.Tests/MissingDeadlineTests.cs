@@ -15,12 +15,12 @@ public sealed class MissingDeadlineTests
     public async Task DirectClientWithoutDeadlineReports(string argument)
     {
         // Arrange
-        string call = $"{GrpcTestSource.DirectClient}.SayHello(new HelloRequest(){argument})";
+        var call = $"{GrpcTestSource.DirectClient}.SayHello(new HelloRequest(){argument})";
         var test = new GrpcAnalyzerTest { TestCode = GrpcTestSource.Wrap($"{{|#0:{call}|}};") };
         test.ExpectedDiagnostics.Add(new DiagnosticResult(DiagnosticDescriptors.MissingDeadline).WithLocation(0));
 
         // Act
-        Task verification = test.RunAsync();
+        var verification = test.RunAsync();
 
         // Assert
         await verification;
@@ -34,12 +34,12 @@ public sealed class MissingDeadlineTests
     public async Task EmptyCallOptionsReport(string options)
     {
         // Arrange
-        string call = $"{GrpcTestSource.DirectClient}.SayHello(new HelloRequest(), options: {options})";
+        var call = $"{GrpcTestSource.DirectClient}.SayHello(new HelloRequest(), options: {options})";
         var test = new GrpcAnalyzerTest { TestCode = GrpcTestSource.Wrap($"{{|#0:{call}|}};") };
         test.ExpectedDiagnostics.Add(new DiagnosticResult(DiagnosticDescriptors.MissingDeadline).WithLocation(0));
 
         // Act
-        Task verification = test.RunAsync();
+        var verification = test.RunAsync();
 
         // Assert
         await verification;
@@ -63,7 +63,7 @@ public sealed class MissingDeadlineTests
         test.ExpectedDiagnostics.Add(new DiagnosticResult(DiagnosticDescriptors.MissingDeadline).WithLocation(0));
 
         // Act
-        Task verification = test.RunAsync();
+        var verification = test.RunAsync();
 
         // Assert
         await verification;
@@ -81,7 +81,7 @@ public sealed class MissingDeadlineTests
         test.ExpectedDiagnostics.Add(new DiagnosticResult(DiagnosticDescriptors.MissingDeadline).WithLocation(0));
 
         // Act
-        Task verification = test.RunAsync();
+        var verification = test.RunAsync();
 
         // Assert
         await verification;
@@ -110,7 +110,7 @@ public sealed class MissingDeadlineTests
         };
 
         // Act
-        Task verification = test.RunAsync();
+        var verification = test.RunAsync();
 
         // Assert
         await verification;
@@ -124,9 +124,15 @@ public sealed class MissingDeadlineTests
     [InlineData("new CallOptions(deadline: deadline)", "DateTime? deadline")]
     [InlineData("new CallOptions(propagationToken: token)", "ContextPropagationToken token")]
     [InlineData("new CallOptions(deadline: null, propagationToken: token)", "ContextPropagationToken token")]
-    [InlineData("new CallOptions(deadline: new DateTime(2030, 1, 1), propagationToken: token).WithDeadline(DateTime.MaxValue)", "ContextPropagationToken token")]
-    [InlineData("new CallOptions(propagationToken: token).WithDeadline(new DateTime(2030, 1, 1)).WithDeadline(DateTime.MaxValue)", "ContextPropagationToken token")]
-    [InlineData("options.WithDeadline(new DateTime(2030, 1, 1)).WithDeadline(DateTime.MaxValue)", "CallOptions options")]
+    [InlineData(
+        "new CallOptions(deadline: new DateTime(2030, 1, 1), propagationToken: token).WithDeadline(DateTime.MaxValue)",
+        "ContextPropagationToken token")]
+    [InlineData(
+        "new CallOptions(propagationToken: token).WithDeadline(new DateTime(2030, 1, 1)).WithDeadline(DateTime.MaxValue)",
+        "ContextPropagationToken token")]
+    [InlineData(
+        "options.WithDeadline(new DateTime(2030, 1, 1)).WithDeadline(DateTime.MaxValue)",
+        "CallOptions options")]
     public async Task ProtectedOrUnknownCallOptionsDoNotReport(string options, string parameters)
     {
         // Arrange
@@ -138,7 +144,7 @@ public sealed class MissingDeadlineTests
         };
 
         // Act
-        Task verification = test.RunAsync();
+        var verification = test.RunAsync();
 
         // Assert
         await verification;
@@ -157,15 +163,15 @@ public sealed class MissingDeadlineTests
         {
             TestCode = GrpcTestSource.Wrap(
                 $$"""
-                {|#0:GrpcChannel.ForAddress("https://localhost").CreateCallInvoker()
-                    .{{call}}|};
-                """,
+                  {|#0:GrpcChannel.ForAddress("https://localhost").CreateCallInvoker()
+                      .{{call}}|};
+                  """,
                 "Method<HelloRequest, HelloReply> method")
         };
         test.ExpectedDiagnostics.Add(new DiagnosticResult(DiagnosticDescriptors.MissingDeadline).WithLocation(0));
 
         // Act
-        Task verification = test.RunAsync();
+        var verification = test.RunAsync();
 
         // Assert
         await verification;
@@ -187,7 +193,7 @@ public sealed class MissingDeadlineTests
         test.ExpectedDiagnostics.Add(new DiagnosticResult(DiagnosticDescriptors.MissingDeadline).WithLocation(0));
 
         // Act
-        Task verification = test.RunAsync();
+        var verification = test.RunAsync();
 
         // Assert
         await verification;

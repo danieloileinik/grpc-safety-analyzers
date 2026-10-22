@@ -8,10 +8,10 @@ internal sealed class GrpcCallRecognizer(GrpcSymbols symbols)
 {
     public bool TryRecognize(IInvocationOperation invocation, out GrpcCall call)
     {
-        IMethodSymbol method = invocation.TargetMethod;
-        bool isCallInvoker = IsCallInvokerMethod(method);
+        var method = invocation.TargetMethod;
+        var isCallInvoker = IsCallInvokerMethod(method);
 
-        bool isGeneratedClientCall = GrpcSymbols.DerivesFrom(method.ContainingType, symbols.ClientBase)
+        var isGeneratedClientCall = GrpcSymbols.DerivesFrom(method.ContainingType, symbols.ClientBase)
                                     && IsGenerated(method)
                                     && method.Parameters.Any(parameter =>
                                         GrpcSymbols.Is(parameter.Type, symbols.CallOptions)
@@ -34,7 +34,7 @@ internal sealed class GrpcCallRecognizer(GrpcSymbols symbols)
 
     private bool IsGenerated(ISymbol symbol)
     {
-        for (ISymbol? current = symbol; current is not null; current = current.ContainingType)
+        for (var current = symbol; current is not null; current = current.ContainingType)
             if (symbols.HasGeneratorAttribute(current))
                 return true;
 

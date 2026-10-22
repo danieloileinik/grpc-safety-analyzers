@@ -19,7 +19,7 @@ public sealed class EditorConfigTests
         test.Configure("dotnet_diagnostic.GRPC001.severity = none");
 
         // Act
-        Task verification = test.RunAsync();
+        var verification = test.RunAsync();
 
         // Assert
         await verification;
@@ -35,7 +35,7 @@ public sealed class EditorConfigTests
         };
         test.SolutionTransforms.Add((solution, projectId) =>
         {
-            CompilationOptions options = solution.GetProject(projectId)!.CompilationOptions!;
+            var options = solution.GetProject(projectId)!.CompilationOptions!;
             return solution.WithProjectCompilationOptions(
                 projectId,
                 options.WithSpecificDiagnosticOptions(
@@ -47,7 +47,7 @@ public sealed class EditorConfigTests
                 .WithSeverity(DiagnosticSeverity.Error));
 
         // Act
-        Task verification = test.RunAsync();
+        var verification = test.RunAsync();
 
         // Assert
         await verification;

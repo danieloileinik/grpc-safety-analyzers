@@ -25,7 +25,7 @@ public sealed class StrictModeTests
         test.ExpectedDiagnostics.Add(new DiagnosticResult(DiagnosticDescriptors.MissingDeadline).WithLocation(0));
 
         // Act
-        Task verification = test.RunAsync();
+        var verification = test.RunAsync();
 
         // Assert
         await verification;
@@ -43,26 +43,26 @@ public sealed class StrictModeTests
         };
         test.TestState.Sources.Add(
             ("CustomInvoker.cs", """
-                                  using System;
-                                  using Grpc.Core;
+                                 using System;
+                                 using Grpc.Core;
 
-                                  public abstract class CustomInvoker : CallInvoker
-                                  {
-                                      public override TResponse BlockingUnaryCall<TRequest, TResponse>(
-                                          Method<TRequest, TResponse> method,
-                                          string host,
-                                          CallOptions options,
-                                          TRequest request)
-                                      {
-                                          throw new NotSupportedException();
-                                      }
-                                  }
-                                  """));
+                                 public abstract class CustomInvoker : CallInvoker
+                                 {
+                                     public override TResponse BlockingUnaryCall<TRequest, TResponse>(
+                                         Method<TRequest, TResponse> method,
+                                         string host,
+                                         CallOptions options,
+                                         TRequest request)
+                                     {
+                                         throw new NotSupportedException();
+                                     }
+                                 }
+                                 """));
         test.Configure("grpc_safety.strict = true");
         test.ExpectedDiagnostics.Add(new DiagnosticResult(DiagnosticDescriptors.MissingDeadline).WithLocation(0));
 
         // Act
-        Task verification = test.RunAsync();
+        var verification = test.RunAsync();
 
         // Assert
         await verification;
@@ -81,7 +81,7 @@ public sealed class StrictModeTests
         test.Configure($"grpc_safety.strict = {value}");
 
         // Act
-        Task verification = test.RunAsync();
+        var verification = test.RunAsync();
 
         // Assert
         await verification;
@@ -120,7 +120,7 @@ public sealed class StrictModeTests
         test.Configure("grpc_safety.strict = true");
 
         // Act
-        Task verification = test.RunAsync();
+        var verification = test.RunAsync();
 
         // Assert
         await verification;
