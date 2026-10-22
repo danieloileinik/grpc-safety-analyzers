@@ -1,55 +1,37 @@
 # GrpcSafety.Analyzers
 
-A Roslyn analyzer for confirmed deadline and retry problems in .NET gRPC clients.
-The default behavior is conservative: an unresolved value or configuration stays
-`Unknown`. Missing a problem is preferable to reporting an unproven violation.
+A C# analyzer that reports gRPC client calls without a deadline during compilation.
 
-**Status: an initial scaffold with a working subset of GRPC001.** The other rules
-have descriptors, classifier behavior, tests, and resolver contracts. Their
-resolvers are not implemented, so they do not produce diagnostics in the shipped
-analyzer yet.
+**Preview: `0.1.0-alpha.1`. Only GRPC001 currently produces diagnostics.**
+The analyzer can inspect a limited set of client constructions and deadline
+expressions. When it cannot determine whether a call has a deadline, it does not
+report a warning by default. A build without warnings does not prove that all
+calls have deadlines.
 
-## Rules
+## Install the preview
 
-All descriptors default to **Warning**. Severity is configurable in `.editorconfig`.
+The steps below build a local NuGet package from a checkout of this repository.
+They do not require a published release.
 
-| ID | Intended check | Current implementation |
-| --- | --- | --- |
-| GRPC001 | A call has no deadline and no central deadline mechanism. | Works for inline client/channel construction and supported deadline expressions. |
-| GRPC002 | A call inside an RPC handler neither inherits the parent deadline nor supplies a finite deadline. | Classifier and propagation resolver contract only. |
-| GRPC003 | Retry or hedging permits multiple attempts without declared idempotency in the matching `.proto` method. | Classifier and retry/proto resolver contracts only. |
-| GRPC004 | Retry or hedging permits multiple attempts without an overall deadline. | Classifier and retry resolver contract only. |
+Use the .NET 10 SDK selected by
+[global.json](https://github.com/danieloileinik/grpc-safety-analyzers/blob/main/global.json).
+NuGet access is required to restore dependencies. The analyzer is built against
+Roslyn 4.14; the .NET 10 compiler host is the verified environment.
 
-The classifier selects at most one diagnostic per call. Timing violations follow
-`GRPC002 > GRPC004 > GRPC001`. The current classifier selects GRPC003 only when no
-timing diagnostic applies.
+### 1. Build the package
 
-## Build and test
-
-Use the .NET 10 SDK selected by [global.json](global.json). Run from the repository
-root:
+Run from this repository's root:
 
 ```sh
-dotnet restore GrpcSafety.Analyzers.slnx
-dotnet build GrpcSafety.Analyzers.slnx --configuration Release --no-restore
-dotnet test GrpcSafety.Analyzers.slnx --configuration Release --no-build --no-restore
 dotnet pack src/GrpcSafety.Analyzers/GrpcSafety.Analyzers.csproj \
-  --configuration Release --no-build --no-restore --output artifacts/packages
+  --configuration Release --output artifacts/packages
 ```
 
-The first restore and test run require NuGet access. The test framework downloads
-reference assemblies as well as the project dependencies.
+This creates `artifacts/packages/GrpcSafety.Analyzers.0.1.0-alpha.1.nupkg`.
 
-The analyzer targets `netstandard2.0` and uses Roslyn 4.14 APIs. The tests target
-`net10.0`; the .NET 10 compiler host is the currently verified environment.
+### 2. Reference it from your client project
 
-## Use the local package
-
-The pack command creates
-`artifacts/packages/GrpcSafety.Analyzers.0.1.0-alpha.1.nupkg`. This workflow does not
-require a published NuGet release.
-
-Add this reference to the consuming project:
+Add the following to the `.csproj` that contains your gRPC client calls:
 
 ```xml
 <ItemGroup>
@@ -59,40 +41,51 @@ Add this reference to the consuming project:
 </ItemGroup>
 ```
 
-Then restore with the local feed and NuGet.org. Replace `path/to/Client.csproj`
-with the consuming project path; run these commands from this repository root:
+Keep your existing gRPC and generated-client references. This package supplies
+the analyzer; it does not supply a gRPC client or application runtime assembly.
+`PrivateAssets="all"` keeps the analyzer reference private to this project.
+
+### 3. Restore and build your client project
+
+Run from this repository's root. Replace `/path/to/Client.csproj` with the path to
+your client project:
 
 ```sh
-dotnet restore path/to/Client.csproj \
+dotnet restore /path/to/Client.csproj \
   --source "$PWD/artifacts/packages" --source https://api.nuget.org/v3/index.json
-dotnet build path/to/Client.csproj --no-restore
+dotnet build /path/to/Client.csproj --no-restore
 ```
 
-The package places its assembly under `analyzers/dotnet/cs`. It has no application
-runtime assembly or gRPC package dependencies of its own.
+The analyzer runs during the build. GRPC001 is a warning by default; you can
+change its severity in `.editorconfig` as shown below.
 
-## Examples
+## What GRPC001 reports
 
-These snippets assume a generated `Greeter.GreeterClient`, `HelloRequest`, and the
-usual `System`, `Grpc.Core`, and `Grpc.Net.Client` imports. Construction stays
-inline to make configuration visible to the current resolver.
+GRPC001 means that the analyzer found no deadline for the call and no central
+deadline mechanism in the client configuration it could inspect. Central
+protection is configured for the client or channel rather than passed in the
+call's arguments.
 
-### Reported: no deadline
+These examples assume a generated `Greeter.GreeterClient`, `HelloRequest`, and
+the `System`, `Grpc.Core`, `Grpc.Net.Client`, and generated-type namespace imports.
+Construction stays inline to make configuration visible to the preview analyzer.
+
+### A call without a deadline
 
 ```csharp
 new Greeter.GreeterClient(GrpcChannel.ForAddress("https://localhost"))
-    .SayHello(new HelloRequest()); // GRPC001
+    .SayHello(new HelloRequest()); // GRPC001: Set a deadline for this gRPC call
 ```
 
-An omitted deadline, `null`, `default(DateTime?)`, or `DateTime.MaxValue` is treated
-as an absent deadline. The same applies to empty `CallOptions`:
+An omitted deadline, `null`, `default(DateTime?)`, or `DateTime.MaxValue` counts
+as an absent deadline. Empty `CallOptions` also produce GRPC001:
 
 ```csharp
 new Greeter.GreeterClient(GrpcChannel.ForAddress("https://localhost"))
     .SayHello(new HelloRequest(), options: new CallOptions()); // GRPC001
 ```
 
-### Not reported: a known finite deadline
+### A call with a known finite deadline
 
 ```csharp
 new Greeter.GreeterClient(GrpcChannel.ForAddress("https://localhost"))
@@ -101,161 +94,164 @@ new Greeter.GreeterClient(GrpcChannel.ForAddress("https://localhost"))
         deadline: new DateTime(2030, 1, 1, 0, 0, 0, DateTimeKind.Utc));
 ```
 
-The fixed date illustrates a statically resolvable expression. A supported finite
-value can also be passed through `new CallOptions(deadline: ...)` or
-`new CallOptions().WithDeadline(...)`. The analyzer checks whether the deadline is
-finite; it does not judge whether the chosen time is appropriate or still in the
-future.
+This produces no warning. The fixed date demonstrates an expression the analyzer
+can resolve. It checks whether the value is finite; it does not check whether
+the deadline is appropriate or still in the future.
 
-### Not reported by default: client configuration is unresolved
+A supported deadline can also be passed through `new CallOptions(deadline: ...)`
+or `.WithDeadline(...)`. `WithDeadline` replaces the previous deadline. Replacing
+it with `DateTime.MaxValue` produces GRPC001 when the supported options chain has
+no propagation token. If the token cannot be resolved, the analyzer stays silent
+because a deadline might be inherited through it.
+
+## Calls without warnings
+
+The analyzer uses `Unknown` for values or configuration it cannot resolve.
+`Unknown` suppresses diagnostics in the following cases.
+
+### The client is stored or passed into a method
 
 ```csharp
 void Send(Greeter.GreeterClient client)
 {
-    client.SayHello(new HelloRequest()); // Unknown; no diagnostic by default.
+    client.SayHello(new HelloRequest()); // No warning in default mode.
 }
 ```
 
-The same limitation applies to a client stored in a local variable or field, even
-when its construction is visible nearby. Following those assignments requires
-provenance analysis that is not implemented yet.
+The analyzer cannot determine how this client was configured. The same applies
+to a client read from a local variable or field, even if its construction is
+visible nearby. Strict mode can warn for these clients under an additional
+assumption described below.
 
-### Not reported: the deadline expression is unresolved
+### The deadline is computed at runtime
 
 ```csharp
 new Greeter.GreeterClient(GrpcChannel.ForAddress("https://localhost"))
     .SayHello(new HelloRequest(), deadline: DateTime.UtcNow.AddSeconds(5));
 ```
 
-The current resolver leaves this expression `Unknown`. No warning means that a
-violation was not proven; it does not mean the analyzer proved the call safe.
+The current analyzer cannot resolve this expression. It produces no warning
+in either default or strict mode.
 
-## Configuration
+Other unresolved inputs include nonempty channel options, custom call invokers,
+factories, dependency-injection registrations, and configuration outside the
+current compilation. Generated call sites are excluded from analysis; calls to
+generated clients from ordinary source code are analyzed.
+
+## Configure diagnostics
+
+Add these settings to an `.editorconfig` that applies to your client source files:
 
 ```editorconfig
 root = true
 
 [*.cs]
 dotnet_diagnostic.GRPC001.severity = warning
-dotnet_diagnostic.GRPC002.severity = warning
-dotnet_diagnostic.GRPC003.severity = warning
-dotnet_diagnostic.GRPC004.severity = warning
-
 grpc_safety.strict = false
 ```
 
-Set a rule's severity to `error` to fail the build, or `none` to disable it.
-Severity settings for GRPC002–004 apply once their resolvers are implemented.
+Use `error` instead of `warning` to fail the build, or `none` to disable GRPC001.
+The other diagnostic IDs are reserved for planned rules and do not currently
+produce warnings.
 
 ### Strict mode
 
-`grpc_safety.strict = true` treats an unresolved client registration as having no
-central deadline mechanism. The unresolved-client example above then reports
-GRPC001 if the call also has no explicit deadline.
+Set `grpc_safety.strict = true` to assume that clients read from a local variable,
+field, or parameter have no central deadline mechanism. Such a call then produces
+GRPC001 if its explicit deadline is confirmed absent. This assumption can produce
+a warning for a client whose deadline is configured elsewhere.
 
-Strict mode changes only that registration assumption:
-
-| Evidence | Default mode | Strict mode |
+| Call evidence | Default mode | Strict mode |
 | --- | --- | --- |
-| Client comes from a local, field, or parameter; deadline is absent. | `Unknown`; no diagnostic. | GRPC001. |
-| Explicit deadline is a supported finite value. | `Protected`. | `Protected`. |
-| Explicit deadline is an unresolved expression. | `Unknown`. | `Unknown`. |
-| Inline construction uses opaque channel options or a custom invoker; deadline is absent. | `Unknown`. | `Unknown`. |
+| Client comes from a local, field, or parameter; deadline is absent. | No warning. | GRPC001. |
+| Explicit deadline is a supported finite value. | No warning. | No warning. |
+| Explicit deadline is an unresolved expression. | No warning. | No warning. |
+| Inline construction uses unresolved channel options or a custom invoker. | No warning. | No warning. |
 
-Default mode has lower recall because unresolved registrations suppress warnings.
-Strict mode can warn for a client whose protection is configured elsewhere. A
-missing or invalid strict option is treated as `false`.
+Conditional access (`client?.SayHello(...)`) uses the same configuration evidence
+as a regular call. A missing or invalid strict option is treated as `false`.
 
-## Architecture
+## Supported analysis and limitations
 
-There is one analyzer entry point and one classification pipeline:
+- Calls to generated clients and the five standard `CallInvoker` RPC methods,
+  including their overrides, are recognized. Unrelated overloads are ignored.
+- Client configuration is resolved for an inline generated constructor using
+  `GrpcChannel.ForAddress` with a constant string address and omitted, null, or
+  empty literal channel options. Direct `CreateCallInvoker()` chains are also
+  supported.
+- Deadline resolution covers supported constant-argument `DateTime` constructors,
+  sentinel/default values, and supported `CallOptions` construction and
+  `WithDeadline` chains. Unsupported expressions remain `Unknown`.
+- Tracking client assignments, `AddGrpcClient`, `ConfigureChannel`, interceptors,
+  and `EnableCallContextPropagation` is not implemented.
+- RPC handler detection, parent-deadline inheritance, retry/hedging policy
+  resolution, and `.proto` idempotency parsing are not implemented.
+- `CancellationToken` checking, code fixes, and a server retry test-helper package
+  are outside the current implementation.
 
-1. **Recognize the call.** `GrpcCallRecognizer` uses Roslyn symbols to identify
-   generated client methods and the supported `CallInvoker` call methods.
-2. **Collect evidence.** `DeadlineResolver` inspects arguments;
-   `IClientConfigurationResolver` resolves the client's central protection.
-   Propagation, retry, and proto contracts have separate resolver interfaces.
-3. **Classify.** `CallSafetyClassifier` combines evidence, applies strict mode,
-   and chooses a diagnostic. Rule priority lives here.
-4. **Report.** `GrpcSafetyAnalyzer` reports the selected diagnostic at the call.
+## Development
 
-Each aspect uses the same states:
+To build and run the test suite, use the .NET 10 SDK and run from the repository
+root:
 
-| State | Meaning |
-| --- | --- |
-| `Protected` | The relevant protection is confirmed. |
-| `Unprotected` | The relevant violation is confirmed, subject to the strict registration assumption. |
-| `Unknown` | Available evidence cannot establish either result. |
+```sh
+dotnet restore GrpcSafety.Analyzers.slnx
+dotnet build GrpcSafety.Analyzers.slnx --configuration Release --no-restore
+dotnet test GrpcSafety.Analyzers.slnx --configuration Release --no-build --no-restore
+```
 
-Default-initialized evidence is `Unknown`. Missing propagation and retry resolver
-implementations also return `Unknown` through the pipeline. For retry safety, the
-classifier separately requires a confirmed effective attempt count greater than
-one before considering retry-related diagnostics.
+The first test run also needs NuGet access to download reference assemblies.
+The analyzer targets `netstandard2.0`; tests target `net10.0` and use
+`Microsoft.CodeAnalysis.Testing`, xUnit, and a real generated gRPC client.
+The suite covers deadline replacement, conditional access, strict mode, severity,
+call recognition, and classifier priorities. GRPC002–004 are tested through
+classifier facts rather than end-to-end analyzer diagnostics.
+
+### Architecture
+
+`GrpcSafetyAnalyzer` recognizes calls, collects evidence through
+`CallAnalysisPipeline`, and reports the result selected by `CallSafetyClassifier`.
+Evidence is `Protected`, `Unprotected`, or `Unknown`; default-initialized evidence
+and missing resolver implementations stay `Unknown`.
 
 | Location | Responsibility |
 | --- | --- |
-| `src/GrpcSafety.Analyzers/GrpcSafetyAnalyzer.cs` | Roslyn registration and diagnostic reporting. |
-| `src/GrpcSafety.Analyzers/Analysis/` | Evidence states, pipeline, and shared classifier. |
-| `src/GrpcSafety.Analyzers/Semantics/` | Symbol matching, call recognition, deadline resolution, and propagation contract. |
-| `src/GrpcSafety.Analyzers/Configuration/` | Analyzer options, client configuration, and retry resolver contract. |
-| `src/GrpcSafety.Analyzers/Protobuf/` | Proto method identity and declared-idempotency resolver contract. |
-| `tests/GrpcSafety.Analyzers.Tests/` | Classifier and analyzer tests using a real generated gRPC client. |
+| `src/GrpcSafety.Analyzers/Analysis/` | Evidence, pipeline, and classification. |
+| `src/GrpcSafety.Analyzers/Semantics/` | Call recognition, deadlines, and propagation contract. |
+| `src/GrpcSafety.Analyzers/Configuration/` | Analyzer options, client configuration, and retry contract. |
+| `src/GrpcSafety.Analyzers/Protobuf/` | Proto identity and declared-idempotency contract. |
+| `tests/GrpcSafety.Analyzers.Tests/` | Classifier and analyzer tests. |
 
-The extension interfaces are internal implementation boundaries. Adding a new
-resolver should preserve uncertainty and feed the shared classifier.
+Resolver interfaces are internal extension points. New implementations must
+preserve uncertainty and feed the shared classifier. `AdditionalFiles` are passed
+through the pipeline but are not parsed yet.
 
-## Current limits
+### Planned rules and implementation order
 
-- Client configuration is resolved only for an inline generated constructor using
-  `GrpcChannel.ForAddress` with a constant string address and omitted, null, or
-  empty literal channel options. Direct `CreateCallInvoker()` chains are also
-  supported. Nonempty channel options remain `Unknown`.
-- Local/field assignment tracking, DI registration indexing, `AddGrpcClient`,
-  `ConfigureChannel`, interceptors, and `EnableCallContextPropagation` are pending.
-- Deadline resolution covers supported constant-argument `DateTime` constructors,
-  sentinel/default values, and supported `CallOptions` expressions. Unsupported
-  expressions remain `Unknown`. An opaque propagation token keeps an otherwise
-  absent deadline `Unknown`.
-- RPC handler detection, parent-deadline inheritance, and stricter derived
-  deadlines are pending. The intended GRPC002 scope includes local functions and
-  lambdas inside a handler; calls in other layers are outside that rule's scope.
-  GRPC001 has no handler-only restriction.
-- Retry/hedging policy resolution, effective attempt limits, and `.proto` parsing
-  are pending. `AdditionalFiles` are passed through the pipeline but not parsed.
-- Runtime configuration, JSON, opaque factories, and configuration in another
-  compilation cannot establish protection in default mode.
-- Generated call sites are excluded from analysis. A generated client can still
-  be recognized when called from ordinary source code.
-- `CancellationToken` checking is outside this project's scope; it is delegated
-  to MA0040. Declared idempotency is a contract, not proof of server behavior or
-  deduplication. No code fixes or server test-helper package exist yet.
+First, extend GRPC001 to track client construction and configuration in the same
+compilation. Then implement these rules in order:
 
-## Tests and next steps
+| Order | Rule | Intended check |
+| --- | --- | --- |
+| 1 | GRPC004 | Retry or hedging permits multiple attempts without an overall deadline. |
+| 2 | GRPC002 | A call inside an RPC handler neither inherits the parent deadline nor has a finite deadline of its own. |
+| 3 | GRPC003 | Retry or hedging permits multiple attempts without declared idempotency in the matching `.proto` method. |
 
-The suite uses `Microsoft.CodeAnalysis.Testing` and xUnit. Its 66 cases cover
-supported GRPC001 paths, conservative and unknown cases, strict mode, severity,
-and classifier priorities. Negative and unknown cases outnumber reported cases.
-GRPC002–004 tests exercise classifier facts directly; they are not end-to-end
-coverage of those rules.
+Retry analysis must account for the channel's `MaxRetryAttempts`. Handler analysis
+must include nested local functions and lambdas. Proto matching must handle
+service/method selectors, accept only `IDEMPOTENT` or `NO_SIDE_EFFECTS`, and keep
+ambiguous or unsupported input `Unknown`, including `MethodName.Default`.
+Declared idempotency is a contract, not proof of server deduplication.
 
-The implementation order is:
+The classifier selects at most one diagnostic per call. Timing priority is
+`GRPC002 > GRPC004 > GRPC001`; GRPC003 is selected only if no timing diagnostic
+applies. All four descriptors default to Warning. Retry-related diagnostics
+require a confirmed effective attempt count greater than one.
 
-1. Extend GRPC001 with client provenance and configuration visible in the same
-   compilation, including supported central deadline mechanisms.
-2. Implement GRPC004 with literal service/method/retry/hedging configuration and
-   effective attempts capped by the channel's `MaxRetryAttempts`.
-3. Implement GRPC002 for generated service-base handlers with `ServerCallContext`,
-   including nested local functions and lambdas.
-4. Implement the minimal `.proto` parser and GRPC003. Match service/method names;
-   a service-only selector covers its methods, while `MethodName.Default` remains
-   `Unknown`. Only `IDEMPOTENT` and `NO_SIDE_EFFECTS` satisfy the declared contract.
-   Missing, ambiguous, or unsupported proto input must remain `Unknown`.
-5. Run the analyzer against a corpus of public gRPC examples and review unexpected
-   diagnostics. This corpus validation has not been performed yet.
-
-After the MVP: a GRPC002 code fix that inserts `context.Deadline`, and a separate
-server retry test-helper package.
+Validation against a corpus of public gRPC examples is still pending. Later work
+includes a GRPC002 code fix for `context.Deadline` and a separate server retry
+test-helper package.
 
 ## License
 
-[MIT](LICENSE).
+[MIT](https://github.com/danieloileinik/grpc-safety-analyzers/blob/main/LICENSE).
