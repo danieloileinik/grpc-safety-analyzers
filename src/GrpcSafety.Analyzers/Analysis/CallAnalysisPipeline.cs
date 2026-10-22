@@ -22,6 +22,7 @@ internal sealed class CallAnalysisPipeline(
         deadlinePropagation ?? new DeadlinePropagationResolver(symbols);
 
     private readonly DeadlineResolver _deadlines = new(symbols);
+    private readonly IRetryPolicyResolver _retryPolicies = retryPolicies ?? new RetryPolicyResolver(symbols);
 
     public CallSafetyClassification Analyze(GrpcCall call,
         GrpcSafetyOptions options,
@@ -32,8 +33,7 @@ internal sealed class CallAnalysisPipeline(
         var explicitDeadline = _deadlines.Resolve(call, cancellationToken);
         var deadline = CallSafetyClassifier.ClassifyDeadline(explicitDeadline, configuration, options);
         var deadlinePropagationState = _deadlinePropagation.Resolve(call, deadline, cancellationToken);
-        RetrySafety retry = retryPolicies?.Resolve(call, configuration, protoContracts, additionalFiles, cancellationToken) ??
-                            RetrySafety.Unknown;
+        var retry = _retryPolicies.Resolve(call, configuration, protoContracts, additionalFiles, cancellationToken);
 
         return CallSafetyClassifier.Classify(explicitDeadline, configuration, deadlinePropagationState, retry, options);
     }
