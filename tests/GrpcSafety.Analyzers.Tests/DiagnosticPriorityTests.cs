@@ -9,7 +9,7 @@ public sealed class DiagnosticPriorityTests
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
-    public void PropagationViolationWinsOverDeadlineAndRetry(bool retries)
+    public void DeadlinePropagationViolationWinsOverDeadlineAndRetry(bool retries)
     {
         // Arrange
         var retry = new RetrySafety(ProtectionState.Unprotected, retries);
@@ -23,7 +23,7 @@ public sealed class DiagnosticPriorityTests
             default);
 
         // Assert
-        Assert.Equal(DiagnosticIds.MissingPropagation, classification.Diagnostic?.Id);
+        Assert.Equal(DiagnosticIds.MissingDeadlinePropagation, classification.Diagnostic?.Id);
     }
 
     [Fact]
@@ -99,7 +99,7 @@ public sealed class DiagnosticPriorityTests
     }
 
     [Fact]
-    public void FiniteDeadlineSatisfiesPropagationRequirement()
+    public void FiniteDeadlineSatisfiesDeadlinePropagationRequirement()
     {
         // Arrange
         var configuration = ClientConfiguration.Unresolved;
@@ -113,7 +113,7 @@ public sealed class DiagnosticPriorityTests
             default);
 
         // Assert
-        Assert.Equal(ProtectionState.Protected, classification.Propagation);
+        Assert.Equal(ProtectionState.Protected, classification.DeadlinePropagation);
         Assert.Null(classification.Diagnostic);
     }
 }

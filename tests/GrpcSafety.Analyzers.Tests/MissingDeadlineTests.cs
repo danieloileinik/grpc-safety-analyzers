@@ -51,7 +51,7 @@ public sealed class MissingDeadlineTests
     [InlineData("new CallOptions().WithDeadline(new DateTime(2030, 1, 1))")]
     [InlineData("new CallOptions().WithDeadline(previousDeadline.GetValueOrDefault())")]
     [InlineData("new CallOptions(propagationToken: null).WithDeadline(new DateTime(2030, 1, 1))")]
-    public async Task ReplacingDeadlineWithMaxValueReportsWhenPropagationIsAbsent(string options)
+    public async Task ReplacingDeadlineWithMaxValueReportsWhenDeadlinePropagationIsAbsent(string options)
     {
         // Arrange
         var test = new GrpcAnalyzerTest

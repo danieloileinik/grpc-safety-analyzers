@@ -13,8 +13,8 @@ internal static class DiagnosticDescriptors
         "Set a deadline for this gRPC call",
         "The call has no deadline and its resolved client configuration provides no central deadline mechanism.");
 
-    public static readonly DiagnosticDescriptor MissingPropagation = Create(
-        DiagnosticIds.MissingPropagation,
+    public static readonly DiagnosticDescriptor MissingDeadlinePropagation = Create(
+        DiagnosticIds.MissingDeadlinePropagation,
         "gRPC call does not inherit the parent deadline",
         "Propagate the parent RPC deadline or set a finite deadline",
         "A call inside an RPC handler must inherit the parent deadline or have its own finite deadline.");
@@ -34,7 +34,7 @@ internal static class DiagnosticDescriptors
     public static ImmutableArray<DiagnosticDescriptor> All { get; } =
     [
         MissingDeadline,
-        MissingPropagation,
+        MissingDeadlinePropagation,
         UndeclaredIdempotency,
         RetryWithoutDeadline
     ];

@@ -4,13 +4,13 @@ namespace GrpcSafety.Analyzers.Analysis;
 
 internal readonly struct CallSafetyClassification(
     ProtectionState deadline,
-    ProtectionState propagation,
+    ProtectionState deadlinePropagation,
     ProtectionState retry,
     DiagnosticDescriptor? diagnostic)
 {
     public ProtectionState Deadline { get; } = deadline;
 
-    public ProtectionState Propagation { get; } = propagation;
+    public ProtectionState DeadlinePropagation { get; } = deadlinePropagation;
 
     public ProtectionState Retry { get; } = retry;
 

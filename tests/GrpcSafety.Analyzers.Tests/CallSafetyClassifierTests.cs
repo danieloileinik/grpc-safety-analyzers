@@ -72,7 +72,7 @@ public sealed class CallSafetyClassifierTests
 
         // Assert
         Assert.Equal(ProtectionState.Unknown, classification.Deadline);
-        Assert.Equal(ProtectionState.Unknown, classification.Propagation);
+        Assert.Equal(ProtectionState.Unknown, classification.DeadlinePropagation);
         Assert.Equal(ProtectionState.Unknown, classification.Retry);
         Assert.Null(classification.Diagnostic);
     }

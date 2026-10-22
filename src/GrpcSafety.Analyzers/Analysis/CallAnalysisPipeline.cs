@@ -11,7 +11,7 @@ internal sealed class CallAnalysisPipeline(
     GrpcSymbols symbols,
     ImmutableArray<AdditionalText> additionalFiles,
     IClientConfigurationResolver? clientConfigurations = null,
-    IPropagationResolver? propagation = null,
+    IDeadlinePropagationResolver? deadlinePropagation = null,
     IRetryPolicyResolver? retryPolicies = null,
     IProtoContractResolver? protoContracts = null)
 {
@@ -27,11 +27,11 @@ internal sealed class CallAnalysisPipeline(
         ClientConfiguration configuration = _clientConfigurations.Resolve(call, cancellationToken);
 
         // Missing extension implementations preserve Unknown until the next implementation stages.
-        ProtectionState propagationState = propagation?.Resolve(call, configuration, cancellationToken) ??
+        ProtectionState deadlinePropagationState = deadlinePropagation?.Resolve(call, configuration, cancellationToken) ??
                                            ProtectionState.Unknown;
         RetrySafety retry = retryPolicies?.Resolve(call, configuration, protoContracts, additionalFiles, cancellationToken) ??
                             RetrySafety.Unknown;
 
-        return CallSafetyClassifier.Classify(_deadlines.Resolve(call), configuration, propagationState, retry, options);
+        return CallSafetyClassifier.Classify(_deadlines.Resolve(call), configuration, deadlinePropagationState, retry, options);
     }
 }

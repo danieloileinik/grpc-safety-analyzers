@@ -8,7 +8,7 @@ internal static class CallSafetyClassifier
     public static CallSafetyClassification Classify(
         ProtectionState explicitDeadline,
         ClientConfiguration configuration,
-        ProtectionState propagation,
+        ProtectionState deadlinePropagation,
         RetrySafety retry,
         GrpcSafetyOptions options)
     {
@@ -23,18 +23,18 @@ internal static class CallSafetyClassifier
             _ => ProtectionState.Unknown
         };
 
-        if (deadline is ProtectionState.Protected) propagation = ProtectionState.Protected;
+        if (deadline is ProtectionState.Protected) deadlinePropagation = ProtectionState.Protected;
 
         // Select one diagnostic here; independent rule callbacks must not suppress each other.
-        DiagnosticDescriptor? diagnostic = (propagation, deadline, retry.HasConfirmedMultipleAttempts, retry.State) switch
+        DiagnosticDescriptor? diagnostic = (deadlinePropagation, deadline, retry.HasConfirmedMultipleAttempts, retry.State) switch
         {
-            (ProtectionState.Unprotected, _, _, _) => DiagnosticDescriptors.MissingPropagation,
+            (ProtectionState.Unprotected, _, _, _) => DiagnosticDescriptors.MissingDeadlinePropagation,
             (_, ProtectionState.Unprotected, true, _) => DiagnosticDescriptors.RetryWithoutDeadline,
             (_, ProtectionState.Unprotected, _, _) => DiagnosticDescriptors.MissingDeadline,
             (_, _, true, ProtectionState.Unprotected) => DiagnosticDescriptors.UndeclaredIdempotency,
             _ => null
         };
 
-        return new CallSafetyClassification(deadline, propagation, retry.State, diagnostic);
+        return new CallSafetyClassification(deadline, deadlinePropagation, retry.State, diagnostic);
     }
 }
