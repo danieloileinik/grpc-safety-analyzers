@@ -14,7 +14,13 @@
     <PackageReference Include="Google.Protobuf"/>
     <PackageReference Include="Grpc.Core.Api"/>
     <PackageReference Include="Grpc.Net.Client"/>
+    <PackageReference Include="Grpc.Net.ClientFactory"/>
+    <PackageReference Include="Grpc.AspNetCore.Server.ClientFactory"/>
     <PackageReference Include="Grpc.Tools" PrivateAssets="all"/>
-    <Protobuf Include="TestSupport/greeter.proto" GrpcServices="Client"/>
+    <Protobuf Include="TestSupport/greeter.proto" GrpcServices="Both"/>
   </ItemGroup>
+  <Target Name="CopyGeneratedClientFixture" AfterTargets="Build">
+    <Copy SourceFiles="$(IntermediateOutputPath)TestSupport/GreeterGrpc.cs"
+          DestinationFiles="$(OutDir)GreeterGrpc.fixture.cs"/>
+  </Target>
 </Project>

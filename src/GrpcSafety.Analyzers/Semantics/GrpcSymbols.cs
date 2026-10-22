@@ -5,18 +5,29 @@ namespace GrpcSafety.Analyzers.Semantics;
 
 internal sealed class GrpcSymbols(Compilation compilation)
 {
+    public Compilation Compilation { get; } = compilation;
+
+    public INamedTypeSymbol? ServerCallContext { get; } =
+        compilation.GetTypeByMetadataName("Grpc.Core.ServerCallContext");
+
+    public INamedTypeSymbol? TimeSpan { get; } = compilation.GetTypeByMetadataName("System.TimeSpan");
+
+    public INamedTypeSymbol? Uri { get; } = compilation.GetTypeByMetadataName("System.Uri");
+
     public INamedTypeSymbol? ClientBase { get; } = compilation.GetTypeByMetadataName("Grpc.Core.ClientBase`1");
 
     public INamedTypeSymbol? CallInvoker { get; } = compilation.GetTypeByMetadataName("Grpc.Core.CallInvoker");
 
     public INamedTypeSymbol? CallOptions { get; } = compilation.GetTypeByMetadataName("Grpc.Core.CallOptions");
 
+    public INamedTypeSymbol? Method { get; } = compilation.GetTypeByMetadataName("Grpc.Core.Method`2");
+
     public INamedTypeSymbol? Channel { get; } = compilation.GetTypeByMetadataName("Grpc.Net.Client.GrpcChannel");
 
     public INamedTypeSymbol? ChannelOptions { get; } =
         compilation.GetTypeByMetadataName("Grpc.Net.Client.GrpcChannelOptions");
 
-    public INamedTypeSymbol? GeneratedCodeAttribute { get; } =
+    private INamedTypeSymbol? GeneratedCodeAttribute { get; } =
         compilation.GetTypeByMetadataName("System.CodeDom.Compiler.GeneratedCodeAttribute");
 
     public bool IsAvailable => ClientBase is not null && CallInvoker is not null && CallOptions is not null;
@@ -38,7 +49,7 @@ internal sealed class GrpcSymbols(Compilation compilation)
 
     public static bool DerivesFrom(INamedTypeSymbol? type, INamedTypeSymbol? expected)
     {
-        for (INamedTypeSymbol? current = type; current is not null; current = current.BaseType)
+        for (var current = type; current is not null; current = current.BaseType)
             if (Is(current, expected))
                 return true;
 

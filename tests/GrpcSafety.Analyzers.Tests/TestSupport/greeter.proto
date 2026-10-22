@@ -8,6 +8,13 @@ service Greeter {
   rpc ReadHello (HelloRequest) returns (HelloReply) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
+  rpc ListHello (HelloRequest) returns (stream HelloReply);
+  rpc UploadHello (stream HelloRequest) returns (HelloReply);
+  rpc StreamHello (stream HelloRequest) returns (stream HelloReply);
+}
+
+service OtherGreeter {
+  rpc SayHello (HelloRequest) returns (HelloReply);
 }
 
 message HelloRequest {
