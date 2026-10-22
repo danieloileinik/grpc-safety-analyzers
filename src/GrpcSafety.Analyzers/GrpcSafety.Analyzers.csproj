@@ -3,7 +3,7 @@
     <TargetFramework>netstandard2.0</TargetFramework>
     <IsPackable>true</IsPackable>
     <Version>0.1.0-alpha.1</Version>
-    <Description>Conservative Roslyn diagnostics for gRPC deadlines, propagation, and retries.</Description>
+    <Description>Roslyn diagnostics for gRPC deadlines, deadline propagation, retries, hedging, and declared idempotency. Preview: only GRPC001 currently emits diagnostics.</Description>
     <Authors>Daniil Oleinic</Authors>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>

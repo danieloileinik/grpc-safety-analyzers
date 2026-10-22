@@ -1,12 +1,49 @@
 # GrpcSafety.Analyzers
 
-A C# analyzer that reports gRPC client calls without a deadline during compilation.
+Compile-time checks for safer .NET gRPC calls: deadlines, deadline propagation,
+retries, hedging, and declared idempotency.
 
-**Preview: `0.1.0-alpha.1`. Only GRPC001 currently produces diagnostics.**
-The analyzer can inspect a limited set of client constructions and deadline
-expressions. When it cannot determine whether a call has a deadline, it does not
-report a warning by default. A build without warnings does not prove that all
-calls have deadlines.
+GrpcSafety.Analyzers is a Roslyn analyzer for C# applications that call gRPC
+services. The project aims to catch reliability mistakes during compilation:
+calls with no time limit, outgoing calls that lose an incoming RPC deadline,
+and retry or hedging policies that lack an overall deadline or a declared
+idempotency contract.
+
+These checks connect the call site to the protection configured for its client
+and the contract declared for its RPC method. A deadline bounds a call's duration;
+deadline propagation carries that limit across service boundaries. Retry and
+hedging analysis must also consider the time available for all attempts and
+whether the method is declared safe to repeat.
+
+Diagnostics appear in the build output. You can review them as warnings, promote
+them to build errors, or disable individual rules through `.editorconfig`.
+The analysis works from source code and configuration visible to the compiler;
+it does not execute RPCs or require a running server.
+
+## Rule coverage
+
+The rule set is organized around four related checks:
+
+| Rule | Check | Current status |
+| --- | --- | --- |
+| GRPC001 | Neither the call nor its resolved client configuration provides a deadline. | Available for supported client constructions and deadline expressions. |
+| GRPC002 | A call inside an RPC handler neither inherits the parent deadline nor sets a finite deadline of its own. | Planned; no diagnostics yet. |
+| GRPC003 | Retry or hedging allows multiple attempts without declared idempotency in the matching `.proto` method. | Planned; no diagnostics yet. |
+| GRPC004 | Retry or hedging allows multiple attempts without an overall deadline bounding their total duration. | Planned; no diagnostics yet. |
+
+Declared idempotency is a contract supplied by the service author. The analyzer
+cannot prove that a server implementation is idempotent or deduplicates requests.
+
+## Preview status
+
+**Version `0.1.0-alpha.1` currently emits GRPC001 only.** The remaining rules
+describe the project's intended coverage and do not run in this preview.
+
+GRPC001 currently resolves a limited set of client constructions and deadline
+expressions. By default, an unresolved value or configuration suppresses the
+warning. A build without warnings can therefore mean either that a supported
+deadline was found or that the analyzer lacked enough information. The examples,
+strict-mode settings, and limitations below explain this distinction.
 
 ## Install the preview
 
