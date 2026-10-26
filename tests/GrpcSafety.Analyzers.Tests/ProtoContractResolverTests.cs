@@ -10,7 +10,7 @@ namespace GrpcSafety.Analyzers.Tests;
 public sealed class ProtoContractResolverTests
 {
     [Theory]
-    [InlineData("p.S", "M", (int)ProtectionState.Unprotected)]
+    [InlineData("p.S", "M", (int)ProtectionState.Unknown)]
     [InlineData("p.S", "Read", (int)ProtectionState.Protected)]
     [InlineData("S", "M", (int)ProtectionState.Unknown)]
     [InlineData("p.Missing", "M", (int)ProtectionState.Unknown)]
@@ -69,6 +69,6 @@ public sealed class ProtoContractResolverTests
         var state = resolver.ResolveIdempotency(new ProtoMethodIdentity("S", "M"), files, default);
 
         // Assert
-        Assert.Equal(ProtectionState.Unprotected, state);
+        Assert.Equal(ProtectionState.Unknown, state);
     }
 }

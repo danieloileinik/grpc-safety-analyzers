@@ -21,9 +21,9 @@ internal static class DiagnosticDescriptors
 
     public static readonly DiagnosticDescriptor UndeclaredIdempotency = Create(
         DiagnosticIds.UndeclaredIdempotency,
-        "gRPC retries require declared idempotency",
-        "Declare idempotency in the proto contract before enabling retries or hedging",
-        "A confirmed retry or hedging policy permits multiple attempts for a method without declared idempotency.");
+        "gRPC retries may be unsafe",
+        "Retry may be unsafe because RPC idempotency is not guaranteed.",
+        "Retry or hedging may repeat an RPC whose name or proto declaration does not establish idempotency.");
 
     public static readonly DiagnosticDescriptor RetryWithoutDeadline = Create(
         DiagnosticIds.RetryWithoutDeadline,

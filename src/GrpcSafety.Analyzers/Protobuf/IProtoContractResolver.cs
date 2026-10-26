@@ -7,7 +7,7 @@ namespace GrpcSafety.Analyzers.Protobuf;
 
 internal interface IProtoContractResolver
 {
-    // Missing, ambiguous, or unsupported proto syntax must return Unknown.
+    // Explicit proto declarations override method naming heuristics.
     ProtectionState ResolveIdempotency(
         ProtoMethodIdentity method,
         ImmutableArray<AdditionalText> additionalFiles,

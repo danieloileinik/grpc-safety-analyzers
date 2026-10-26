@@ -20,9 +20,10 @@ public sealed class RetryMethodSelectionTests
     public async Task SourceGeneratedClientUsesActualWireIdentity(string name, bool retry)
     {
         // Arrange
-        var method = RetryTestSource.Method(name: name);
+        string method = "{|#1:" + RetryTestSource.Method(name: name) + "|}";
         var test = CreateTest(method);
         AddExpectedCall(test, retry);
+        test.ExpectedDiagnostics.Add(new DiagnosticResult(DiagnosticDescriptors.UndeclaredIdempotency).WithLocation(1));
 
         // Act
         var verification = test.RunAsync();
@@ -39,11 +40,12 @@ public sealed class RetryMethodSelectionTests
     public async Task UnaryOverloadsResolveToSameRpc(string invocation)
     {
         // Arrange
-        var client = RetryCallSource.Client(RetryTestSource.Method());
+        string client = RetryCallSource.Client("{|#1:" + RetryTestSource.Method() + "|}");
         var test = new GrpcAnalyzerTest
             { TestCode = RetryCallSource.Wrap("{|#0:" + client + "." + invocation + "|};") };
         test.AddGeneratedClientSource();
         AddExpectedCall(test, true);
+        test.ExpectedDiagnostics.Add(new DiagnosticResult(DiagnosticDescriptors.UndeclaredIdempotency).WithLocation(1));
 
         // Act
         var verification = test.RunAsync();
@@ -58,12 +60,15 @@ public sealed class RetryMethodSelectionTests
     public async Task MethodConfigurationOverridesServiceAndDefault(bool exactRetry)
     {
         // Arrange
-        var broad = RetryTestSource.Method(name: ServiceName);
-        var exact = exactRetry
-            ? RetryTestSource.Method(name: ExactName)
+        string broad = "{|#1:" + RetryTestSource.Method(name: ServiceName) + "|}";
+        string exact = exactRetry
+            ? "{|#2:" + RetryTestSource.Method(name: ExactName) + "|}"
             : "new MethodConfig { Names = { " + ExactName + " } }";
         var test = CreateTest(RetryCallSource.DefaultMethod() + ", " + broad + ", " + exact);
         AddExpectedCall(test, exactRetry);
+        test.ExpectedDiagnostics.Add(new DiagnosticResult(DiagnosticDescriptors.UndeclaredIdempotency).WithLocation(1));
+        if (exactRetry)
+            test.ExpectedDiagnostics.Add(new DiagnosticResult(DiagnosticDescriptors.UndeclaredIdempotency).WithLocation(2));
 
         // Act
         var verification = test.RunAsync();

@@ -3,11 +3,12 @@ using GrpcSafety.Analyzers.Analysis;
 
 namespace GrpcSafety.Analyzers.Protobuf;
 
-internal sealed class ProtoService(string name, bool isKnown, ImmutableDictionary<string, ProtectionState> methods)
+internal sealed class ProtoService(string name, bool isKnown, ImmutableDictionary<string, ProtectionState?> methods)
 {
     public string Name { get; } = name;
 
     public bool IsKnown { get; } = isKnown;
 
-    public ImmutableDictionary<string, ProtectionState> Methods { get; } = methods;
+    // Null means no declaration; an explicit IDEMPOTENCY_UNKNOWN remains Unprotected.
+    public ImmutableDictionary<string, ProtectionState?> Methods { get; } = methods;
 }

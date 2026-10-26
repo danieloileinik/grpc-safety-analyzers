@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using System.Linq;
@@ -17,17 +16,12 @@ internal sealed class RetryConfigurationAnalyzer(GrpcSymbols symbols, ImmutableA
     private readonly INamedTypeSymbol? _clientExtensions = symbols.Compilation.GetTypeByMetadataName(
         "Microsoft.Extensions.DependencyInjection.GrpcClientServiceExtensions");
 
-    private readonly ProtoContractResolver _contracts = new();
-
-    private readonly bool _hasProtoFiles =
-        additionalFiles.Any(file => file.Path.EndsWith(".proto", StringComparison.OrdinalIgnoreCase));
-
-    private readonly ClientRegistrationIndex _registrations = new(symbols);
-    private readonly ConcurrentDictionary<Location, byte> _reported = new();
+    private readonly ProtoContractResolver _contracts = new ProtoContractResolver();
+    private readonly ClientRegistrationIndex _registrations = new ClientRegistrationIndex(symbols);
+    private readonly ConcurrentDictionary<Location, byte> _reported = new ConcurrentDictionary<Location, byte>();
 
     public void Analyze(OperationAnalysisContext context)
     {
-        if (!_hasProtoFiles) return;
         var invocation = (IInvocationOperation)context.Operation;
         ChannelRetryConfiguration? configuration = null;
         if (invocation.TargetMethod.Name is "ForAddress" && GrpcSymbols.Is(
@@ -54,29 +48,35 @@ internal sealed class RetryConfigurationAnalyzer(GrpcSymbols symbols, ImmutableA
         {
             context.CancellationToken.ThrowIfCancellationRequested();
             if (method.Attempts is not > 1 ||
-                !HasUnprotectedMethod(method, configuration, context.CancellationToken)) continue;
+                !HasPotentiallyUnsafeMethod(method, configuration, context.CancellationToken)) continue;
             if (_reported.TryAdd(method.Location, 0))
                 context.ReportDiagnostic(
                     Diagnostic.Create(DiagnosticDescriptors.UndeclaredIdempotency, method.Location));
         }
     }
 
-    private bool HasUnprotectedMethod(MethodRetryConfiguration method,
+    private bool HasPotentiallyUnsafeMethod(MethodRetryConfiguration method,
         ChannelRetryConfiguration channel,
         CancellationToken cancellationToken)
     {
         foreach (var name in method.Names)
         {
             if (name.Service is null) continue; // The set of methods on a default channel is unknown.
-            var service = _contracts.FindService(name.Service, additionalFiles, cancellationToken);
-            if (service is null) continue;
-            var candidates = name.Method is null
-                ? service.Methods
-                : service.Methods.Where(candidate => candidate.Key == name.Method);
-            foreach (var candidate in candidates)
+            if (name.Method is { } rpc)
             {
-                if (candidate.Value is not ProtectionState.Unprotected) continue;
-                var overridden = name.Method is null && channel.Methods.Any(other =>
+                var identity = new ProtoMethodIdentity(name.Service, rpc);
+                if (_contracts.ResolveIdempotency(identity, additionalFiles, cancellationToken)
+                    is not ProtectionState.Protected) return true;
+                continue;
+            }
+
+            var service = _contracts.FindService(name.Service, additionalFiles, cancellationToken);
+            if (service is null) return true;
+            foreach (var candidate in service.Methods)
+            {
+                if (RpcIdempotencyClassifier.Classify(candidate.Key, candidate.Value)
+                    is ProtectionState.Protected) continue;
+                var overridden = channel.Methods.Any(other =>
                     other.Names.Any(pattern => pattern.Service == name.Service && pattern.Method == candidate.Key));
                 if (!overridden) return true;
             }

@@ -18,9 +18,10 @@ internal sealed class ProtoContractResolver : IProtoContractResolver
         CancellationToken cancellationToken)
     {
         var service = FindService(method.Service, additionalFiles, cancellationToken);
-        return service is not null && service.Methods.TryGetValue(method.Method, out var state)
+        ProtectionState? declaration = service is not null && service.Methods.TryGetValue(method.Method, out var state)
             ? state
-            : ProtectionState.Unknown;
+            : null;
+        return RpcIdempotencyClassifier.Classify(method.Method, declaration);
     }
 
     public ProtoService? FindService(string fullName,

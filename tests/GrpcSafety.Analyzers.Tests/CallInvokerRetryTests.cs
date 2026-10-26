@@ -29,10 +29,11 @@ public sealed class CallInvokerRetryTests
         var descriptor = Method.Replace("MethodType.Unary", "MethodType." + methodType);
         var body = $$"""
                      Method<HelloRequest, HelloReply> method = {{descriptor}};
-                     {|#0:GrpcChannel.ForAddress("https://localhost", {{RetryCallSource.Options(RetryTestSource.Method())}}).CreateCallInvoker().{{call}}|};
+                     {|#0:GrpcChannel.ForAddress("https://localhost", {{RetryCallSource.Options("{|#1:" + RetryTestSource.Method() + "|}")}}).CreateCallInvoker().{{call}}|};
                      """;
         var test = new GrpcAnalyzerTest { TestCode = RetryCallSource.Wrap(body) };
         test.ExpectedDiagnostics.Add(new DiagnosticResult(DiagnosticDescriptors.RetryWithoutDeadline).WithLocation(0));
+        test.ExpectedDiagnostics.Add(new DiagnosticResult(DiagnosticDescriptors.UndeclaredIdempotency).WithLocation(1));
 
         // Act
         var verification = test.RunAsync();
@@ -63,11 +64,12 @@ public sealed class CallInvokerRetryTests
     {
         // Arrange
         var body =
-            "{|#0:GrpcChannel.ForAddress(\"https://localhost\", " + RetryCallSource.Options(RetryTestSource.Method())
+            "{|#0:GrpcChannel.ForAddress(\"https://localhost\", " + RetryCallSource.Options("{|#1:" + RetryTestSource.Method() + "|}")
                                                                   + ").CreateCallInvoker().BlockingUnaryCall(method, null, new CallOptions(), new HelloRequest())|};";
         var test = new GrpcAnalyzerTest
             { TestCode = RetryCallSource.Wrap(body, "Method<HelloRequest, HelloReply> method") };
         test.ExpectedDiagnostics.Add(new DiagnosticResult(DiagnosticDescriptors.MissingDeadline).WithLocation(0));
+        test.ExpectedDiagnostics.Add(new DiagnosticResult(DiagnosticDescriptors.UndeclaredIdempotency).WithLocation(1));
 
         // Act
         var verification = test.RunAsync();

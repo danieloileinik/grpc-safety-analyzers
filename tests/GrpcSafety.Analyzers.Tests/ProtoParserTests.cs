@@ -9,20 +9,21 @@ namespace GrpcSafety.Analyzers.Tests;
 public sealed class ProtoParserTests
 {
     [Theory]
-    [InlineData(";", (int)ProtectionState.Unprotected)]
-    [InlineData("{}", (int)ProtectionState.Unprotected)]
+    [InlineData(";", null)]
+    [InlineData("{}", null)]
     [InlineData("{ option idempotency_level = IDEMPOTENT; }", (int)ProtectionState.Protected)]
     [InlineData("{ option idempotency_level = NO_SIDE_EFFECTS; }", (int)ProtectionState.Protected)]
     [InlineData("{ option idempotency_level = IDEMPOTENCY_UNKNOWN; }", (int)ProtectionState.Unprotected)]
     [InlineData("{ option idempotency_level = FUTURE; }", (int)ProtectionState.Unknown)]
     [InlineData("{ option idempotency_level = 2; }", (int)ProtectionState.Unknown)]
-    [InlineData("{ option (custom) = true; }", (int)ProtectionState.Unknown)]
-    [InlineData("{ option idempotency_level = IDEMPOTENT; option deprecated = true; }", (int)ProtectionState.Unknown)]
+    [InlineData("{ option (custom) = true; }", null)]
+    [InlineData("{ option idempotency_level = IDEMPOTENT; option deprecated = true; }", (int)ProtectionState.Protected)]
+    [InlineData("{ option deprecated = true; option idempotency_level = IDEMPOTENT; }", (int)ProtectionState.Protected)]
     [InlineData(
         "{ option idempotency_level = IDEMPOTENT; option idempotency_level = IDEMPOTENT; }",
         (int)ProtectionState.Unknown)]
-    [InlineData("{ option (custom) = { idempotency_level: IDEMPOTENT }; }", (int)ProtectionState.Unknown)]
-    public void ClassifiesOnlyKnownRpcOptions(string body, int expected)
+    [InlineData("{ option (custom) = { idempotency_level: IDEMPOTENT }; }", null)]
+    public void ClassifiesOnlyKnownRpcOptions(string body, int? expected)
     {
         // Arrange
         var source = "syntax = \"proto3\"; package p; service S { rpc M (Req) returns (Reply) " + body + " }";
@@ -32,7 +33,7 @@ public sealed class ProtoParserTests
 
         // Assert
         Assert.True(file.IsComplete);
-        Assert.Equal((ProtectionState)expected, Assert.Single(file.Services).Methods["M"]);
+        Assert.Equal((ProtectionState?)expected, Assert.Single(file.Services).Methods["M"]);
     }
 
     [Theory]

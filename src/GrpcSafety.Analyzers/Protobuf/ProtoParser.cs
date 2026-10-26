@@ -110,7 +110,7 @@ internal sealed class ProtoParser
         var name = Identifier();
         if (name is null || !Take("{")) return null;
         var known = true;
-        var methods = ImmutableDictionary.CreateBuilder<string, ProtectionState>(StringComparer.Ordinal);
+        var methods = ImmutableDictionary.CreateBuilder<string, ProtectionState?>(StringComparer.Ordinal);
         while (!Take("}"))
         {
             _cancellationToken.ThrowIfCancellationRequested();
@@ -129,7 +129,7 @@ internal sealed class ProtoParser
                 || methods.ContainsKey(method))
                 return null;
 
-            var state = ProtectionState.Unprotected;
+            ProtectionState? state = null;
             if (!Take(";"))
             {
                 if (!Take("{")) return null;
@@ -139,8 +139,8 @@ internal sealed class ProtoParser
                     if (Take(";")) continue;
                     var start = _position;
                     if (!Take("option") || !SkipStatement()) return null;
+                    if (_tokens[start + 1] != "idempotency_level") continue;
                     var recognized = _position - start == 5
-                                     && _tokens[start + 1] == "idempotency_level"
                                      && _tokens[start + 2] == "=";
                     if (!recognized || seen)
                     {
